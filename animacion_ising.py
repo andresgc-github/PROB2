@@ -45,7 +45,7 @@ import io
 
 # Parámetros
 # ========================================
-file_in = "ising_dataT21.dat" # Nombre del fichero de datos
+file_in = "./ising_dataT21.dat" # Nombre del fichero de datos
 file_out = "isingT21" # Nombre del fichero de salida (sin extensión)
 interval = 100 # Tiempo entre fotogramas en milisegundos
 save_to_file = True # False: muestra la animación por pantalla,
@@ -104,7 +104,7 @@ if nframes > 1:
 
     # Muestra por pantalla o guarda según parámetros
     if save_to_file:
-        animation.save("{}.mp4".format(file_out), dpi=dpi)
+        animation.save("{}.gif".format(file_out), dpi=dpi)
     else:
         plt.show()
 # En caso contrario, muestra o guarda una imagen
