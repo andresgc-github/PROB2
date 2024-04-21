@@ -18,16 +18,19 @@ int DiferenciaEnergias(int n,int m,const vector<vector<int>> &S);
 double ProbabilidadMetropolis(int DE,double T);
 void SpinFlip(int n,int m,vector<vector<int>> &S);
 void SpinsRandom(int N,int M,vector<vector<int>> &S);
+void EscribirMagnetizacion(double magnetizacion, string filename);
+void EscribirMagnetizacionTemperatura(double magnetizacion,double T,string filename);
 
 int main(){
     
     int N,M; // Dimensiones de la matriz de spins
     vector<vector<int>> S;//(N,vector<int>(N)); // Matriz de spins // nombre_del_vector.size() es un entero
     int n,m;  // Índices del punto random
-    double T=1.8; // Temperatura entre 0 y 5
+    double T=0.0; // Temperatura entre 0 y 5
     int DE; // Diferencia de energía entre dos estados (Delta de E)
     double P; // Probabilidad Metrópolis =min(1,exp-DE/T)
     double p; // Probabilidad uniforme entre 0 y 1
+    double magnetizacion;
 
     unsigned seed1 = chrono::system_clock::now().time_since_epoch().count(); // obtain a seed from the system clock
     mt19937_64 generator(seed1);  // initialize the random number engine with seed1
@@ -35,32 +38,53 @@ int main(){
 
     string entrada="spininicial"; // Fichero con la matriz de spines iniciales
     string salida="ising_dataT21"; // Así se llama en el script
+    string salida_M="magnetizacion"; // Nombre del fichero que almacena la evolución temporal de la magnetización
+    string salida_MT="m(T)"; // Nombre del fichero que almacena la magnetización en función de la temperatura
 
-    //Leer(S,entrada);
-    N=500; M=300;
+    //Leer(S,entrada); // Usar esta linea si quiere meterse una matriz de spins inicial por fichero de datos
+    N=100; M=100;
     SpinsRandom(N,M,S);
-    Escribir(S,salida);
+    //Escribir(S,salida);
     N=S.size();
     M=S[0].size();
     
-    int i,j;
-    
+    int i,j,k,l;
+    double aux; // La uso para promediar las magnetizaciones Monte Carlo
+
     int it_MonteCarlo=250;
     int it_Metropolis=N*M; // Índices de los bucles de Monte Carlo y de Metrópolis respectivamente    
-    for(i=0;i<it_MonteCarlo;i++){
-        for(j=0;j<it_Metropolis;j++){
-            ElegirPuntoRandom(n,N);
-            ElegirPuntoRandom(m,M);
-            DE=DiferenciaEnergias(n,m,S);
-            P=ProbabilidadMetropolis(DE,T);
-            p=p_distribution(generator);
-            if(P>p){ // Si queremos que siempre haga spinflip cuando Metropolis es 1, entonces debería ser un >=
-                SpinFlip(n,m,S);
-            } else;
+    while(T<5){ // Voy a calcular la magnetización para 50 temperaturas entre 0 y 5
+        // salida_M="m_"+to_string(T)+"(t)"; // (Genio) En cada T, escribe todas las magnetizaciones Monte Carlo en m_T(t)
+        magnetizacion=0.; // Esta es la magnetización tras cada Monte Carlo, es decir, la magnetización final para T
+        for(i=0;i<it_MonteCarlo;i++){
+            aux=0.; // En esta variable se van almacenando las
+            for(j=0;j<it_Metropolis;j++){
+                ElegirPuntoRandom(n,N);
+                ElegirPuntoRandom(m,M);
+                DE=DiferenciaEnergias(n,m,S);
+                P=ProbabilidadMetropolis(DE,T);
+                p=p_distribution(generator);
+                if(P>p){ // Si queremos que siempre haga spinflip cuando Metropolis es 1, entonces debería ser un >=
+                    SpinFlip(n,m,S);
+                } else; // B)  
+            }
+            if(i>175){ // Sólo quiero quedarme con los últimos 75 pasos Monte Carlo, cuando la configuración está "estabilizada"
+                for(k=0;k<N;k++){
+                    for(l=0;l<M;l++){
+                        aux+=S[k][l]; // La magnetización será el módulo de la suma de todos los spins del sistema
+                    }
+                }
+                aux=sqrt(aux*aux); // Esto es el |m| del sistema tras uno de los pasos Monte Carlo finales (sistema estabilizado)
+                magnetizacion+=aux; // Va sumando todas las magnetizaciones Monte Carlo anteriores para después promediarlas
+            }
+            //Escribir(S,salida);  //        
+            //EscribirMagnetizacion(magnetizacion,salida_M); //
         }
-        Escribir(S,salida);
+        magnetizacion=magnetizacion/(75*N*M); // La magnetización final para una T es el promedio de las 75 últimas magnetizaciones Monte Carlo
+        // Escalo la magnetización entre 0 y 1 al dividir por el número de spines o contribuciones, N*M
+        EscribirMagnetizacionTemperatura(magnetizacion,T,salida_MT);
+        T+=0.1;
     }
-
     return 0;
 }
 
@@ -203,6 +227,28 @@ void SpinsRandom(int N,int M,vector<vector<int>> &S){
         }
     } // Compactito
 
+
+    return;
+}
+
+void EscribirMagnetizacion(double magnetizacion, string filename){
+
+    FILE *f1;
+    filename+=".dat";/*el operador += (o el propio +) sí que funciona con */
+    f1=fopen(filename.c_str(),"a"); //este .c_str() convierte el string en un array de 
+    fprintf(f1,"%lf\n",magnetizacion); 
+    fclose(f1);
+
+    return;
+}
+
+void EscribirMagnetizacionTemperatura(double magnetizacion,double T,string filename){
+
+    FILE *f1;
+    filename+=".dat";/*el operador += (o el propio +) sí que funciona con */
+    f1=fopen(filename.c_str(),"a"); //este .c_str() convierte el string en un array de 
+    fprintf(f1,"%lf\t%lf\n",magnetizacion,T); 
+    fclose(f1);
 
     return;
 }
